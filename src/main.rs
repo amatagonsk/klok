@@ -5,12 +5,10 @@ use color_eyre::{
 };
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind};
 use ratatui::{
-    prelude::*,
-    symbols::border,
-    widgets::{
+    layout::Offset, prelude::*, symbols::border, widgets::{
         block::{Position, Title},
         *,
-    },
+    }
 };
 use std::time::Duration;
 
@@ -43,12 +41,16 @@ impl App {
     }
 
     fn render_frame(&self, frame: &mut Frame) {
-        frame.render_widget(self, frame.size());
+        frame.render_widget(
+            self,
+            frame.size()
+            // .offset(Offset {x:0, y:3}),
+        );
     }
 
     fn tictac(&mut self) {
-        let local_datetime: DateTime<Local> = Local::now();
-        let local_formatted = format!("{}", local_datetime.format("%H:%M:%S"));
+        let local_date_time: DateTime<Local> = Local::now();
+        let local_formatted = format!("{}", local_date_time.format("%H:%M:%S"));
         self.time = local_formatted;
     }
 
@@ -57,7 +59,6 @@ impl App {
         // idk best refresh rate
         let timeout = Duration::from_secs_f32(60.0 / 60.0);
         if event::poll(timeout)? {
-            self.tictac();
             if let Event::Key(key_event) = event::read()? {
                 self.handle_key_event(key_event)?
             }
@@ -82,12 +83,12 @@ impl App {
 
 impl Widget for &App {
     fn render(self, area: Rect, buf: &mut Buffer) {
-        let title = Title::from(" Counter App Tutorial ".bold());
+        let title = Title::from(" clock ".bold());
         let instructions = Title::from(Line::from(vec![
-            " Quit ".into(),
-            "<Q>".blue().bold(),
-            " or ".bold(),
-            "<Esc>".blue().bold(),
+            " Quit:".into(),
+            " <Q> ".blue().bold(),
+            "or".bold(),
+            " <Esc> ".blue().bold(),
         ]));
         let block = Block::default()
             .title(title.alignment(Alignment::Center))
@@ -96,8 +97,9 @@ impl Widget for &App {
                     .alignment(Alignment::Center)
                     .position(Position::Bottom),
             )
-            .borders(Borders::TOP)
-            .border_set(border::DOUBLE);
+            .borders(Borders::ALL)
+            .border_type(BorderType::Rounded);
+            // .border_set(border::DOUBLE);
 
         let clock = Text::from(vec![Line::from(vec![self.time.to_string().into()])]);
 
