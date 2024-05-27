@@ -1,21 +1,7 @@
-use chrono::{DateTime, Datelike, Local, Utc};
-use color_eyre::{
-    eyre::{bail, WrapErr},
-    Result,
-};
-use crossterm::{
-    event::{self, Event, KeyCode, KeyEvent, KeyEventKind},
-    terminal::size,
-};
-use ratatui::{
-    layout::Offset,
-    prelude::*,
-    symbols::border,
-    widgets::{
-        block::{Position, Title},
-        *,
-    },
-};
+use chrono::{DateTime, Datelike, Local};
+use color_eyre::{eyre::WrapErr, Result};
+use crossterm::event::{self, Event, KeyCode, KeyEvent};
+use ratatui::{prelude::*, widgets::*};
 use std::time::Duration;
 use tui_big_text::{BigText, PixelSize};
 mod errors;
@@ -49,7 +35,7 @@ impl App {
     }
 
     fn centered_rect(r: Rect) -> Rect {
-        // full size 8x8
+        // tui-big-text full size is 8x8
         let clock_height = 8 + 1;
         let clock_width = (8 * 8) + 2;
         let popup_layout = Layout::default()
@@ -74,24 +60,14 @@ impl App {
     }
 
     fn render_frame(&self, frame: &mut Frame) {
-        // frame.render_widget(
-        //     self,
-        //     // frame.size(), // .offset(Offset {
-        //     Self::centered_rect(frame.size(), 100, 30), //       x: 0,
-        //                                                 //       // tui-big-text full 8x8
-        //                                                 //       y: (((frame.size().height / 2) - (8 / 2)) as i32),
-        //                                                 //   }),
-        // );
         let ymd = <String as Clone>::clone(&self.year_month_day);
         let weekday = <String as Clone>::clone(&self.weekday);
-        let block = Block::bordered()
-            .border_type(BorderType::Rounded)
+        let block = Block::new()
             .title(format!(" {} {} ", ymd, weekday))
             .title_bottom(Line::from(" exit: <q> or <Esc> ").centered());
 
         // let center_frame= App::centered_rect(frame.size());
         let center_frame = App::centered_rect(frame.size());
-        // let area = block.inner(frame.size());
         frame.render_widget(&block, center_frame);
 
         let big_text = BigText::builder()
@@ -121,7 +97,6 @@ impl App {
             if let Event::Key(key_event) = event::read()? {
                 self.handle_key_event(key_event)?
             }
-            // _ => Ok(()),
         }
         Ok(())
     }
@@ -139,31 +114,3 @@ impl App {
         self.exit = true;
     }
 }
-
-// impl Widget for &App {
-//     fn render(self, area: Rect, buf: &mut Buffer) {
-//         let title = Title::from(" clock ".bold());
-//         let instructions = Title::from(Line::from(vec![
-//             " Quit:".into(),
-//             " <Q> ".blue().bold(),
-//             "or".bold(),
-//             " <Esc> ".blue().bold(),
-//         ]));
-//         let block = Block::default()
-//             .title(title.alignment(Alignment::Center))
-//             .title(
-//                 instructions
-//                     .alignment(Alignment::Center)
-//                     .position(Position::Bottom),
-//             )
-//             .borders(Borders::ALL)
-//             .border_type(BorderType::Rounded);
-
-//         let clock = self.time.to_string();
-
-//         Paragraph::new(clock)
-//             .centered()
-//             .block(block)
-//             .render(area, buf);
-//     }
-// }
