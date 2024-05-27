@@ -80,20 +80,18 @@ impl App {
         let popup_layout = Layout::default()
             .direction(Direction::Vertical)
             .constraints([
-                Constraint::Percentage((100 - clock_height) / 2),
-                Constraint::Min(clock_height),
-                Constraint::Max(clock_height),
-                Constraint::Percentage((100 - clock_height) / 2),
+                Constraint::Fill(1),
+                Constraint::Length(clock_height),
+                Constraint::Fill(1),
             ])
             .split(r);
 
         Layout::default()
             .direction(Direction::Horizontal)
             .constraints([
-                Constraint::Percentage((100 - clock_width) / 2),
-                Constraint::Min(clock_width),
-                Constraint::Max(clock_width),
-                Constraint::Percentage((100 - clock_width) / 2),
+                Constraint::Fill(1),
+                Constraint::Length(clock_width),
+                Constraint::Fill(1),
             ])
             .split(popup_layout[1])[1]
     }
