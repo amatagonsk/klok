@@ -72,9 +72,9 @@ impl App {
         };
 
         let clock_width: u16 = match &self.args_size.as_str() {
-            &"full" => 8,
-            &"half" => 4,
-            _ => 4,
+            &"full" => 8 * 8 + 1,
+            &"half" => 4 * 8 + 2,
+            _ => 4 * 8 + 2,
         };
 
         let popup_layout = Layout::default()
@@ -90,10 +90,10 @@ impl App {
         Layout::default()
             .direction(Direction::Horizontal)
             .constraints([
-                Constraint::Percentage((100 - clock_width * 8) / 2),
-                Constraint::Min(clock_width * 8),
-                Constraint::Max(clock_width * 8),
-                Constraint::Percentage((100 - clock_width * 8) / 2),
+                Constraint::Percentage((100 - clock_width) / 2),
+                Constraint::Min(clock_width),
+                Constraint::Max(clock_width),
+                Constraint::Percentage((100 - clock_width) / 2),
             ])
             .split(popup_layout[1])[1]
     }
