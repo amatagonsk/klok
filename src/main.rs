@@ -5,13 +5,16 @@ use color_eyre::{
 };
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind};
 use ratatui::{
-    layout::Offset, prelude::*, symbols::border, widgets::{
+    layout::Offset,
+    prelude::*,
+    symbols::border,
+    widgets::{
         block::{Position, Title},
         *,
-    }
+    },
 };
 use std::time::Duration;
-
+use tui_big_text::{BigText, PixelSize};
 mod errors;
 mod tui;
 
@@ -40,11 +43,37 @@ impl App {
         Ok(())
     }
 
+    fn centered_rect(r: Rect, percent_x: u16, percent_y: u16) -> Rect {
+        let clock_height = 10;
+        let popup_layout = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([
+                Constraint::Percentage((100 - percent_y) / 2),
+                Constraint::Min(clock_height),
+                Constraint::Max(clock_height),
+                Constraint::Percentage((100 - percent_y) / 2),
+            ])
+            .split(r);
+
+        Layout::default()
+            .direction(Direction::Horizontal)
+            .constraints([
+                Constraint::Percentage((100 - percent_x) / 2),
+                Constraint::Percentage(percent_x),
+                Constraint::Percentage((100 - percent_x) / 2),
+            ])
+            .split(popup_layout[1])[1]
+    }
+
     fn render_frame(&self, frame: &mut Frame) {
         frame.render_widget(
             self,
-            frame.size()
-            // .offset(Offset {x:0, y:3}),
+            // frame.size(), // .offset(Offset {
+                Self::centered_rect(frame.size(), 100, 30)
+                        //       x: 0,
+                        //       // tui-big-text full 8x8
+                        //       y: (((frame.size().height / 2) - (8 / 2)) as i32),
+                        //   }),
         );
     }
 
@@ -57,7 +86,7 @@ impl App {
     /// updates the application's state based on user input
     fn handle_events(&mut self) -> Result<()> {
         // idk best refresh rate
-        let timeout = Duration::from_secs_f32(60.0 / 60.0);
+        let timeout = Duration::from_millis(250);
         if event::poll(timeout)? {
             if let Event::Key(key_event) = event::read()? {
                 self.handle_key_event(key_event)?
@@ -99,9 +128,8 @@ impl Widget for &App {
             )
             .borders(Borders::ALL)
             .border_type(BorderType::Rounded);
-            // .border_set(border::DOUBLE);
 
-        let clock = Text::from(vec![Line::from(vec![self.time.to_string().into()])]);
+        let clock = self.time.to_string();
 
         Paragraph::new(clock)
             .centered()
