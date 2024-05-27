@@ -11,3 +11,4 @@ crossterm = "0.27.0"
 ratatui = "0.26.2"
 tui-big-text = "0.4.3"
 chrono = "0.4"
+clap = { version = "4.5.4", features = ["derive"] }
