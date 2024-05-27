@@ -6,11 +6,40 @@ use std::time::Duration;
 use tui_big_text::{BigText, PixelSize};
 mod errors;
 mod tui;
+use clap::{arg, command, Parser};
+
+#[derive(Parser, Debug)]
+#[command(version, about, long_about = None)]
+struct Args {
+    #[arg(
+        short = 's',
+        long,
+        value_parser = clap::builder::PossibleValuesParser::new(["full", "half","quad"])
+    )]
+    size: Option<String>,
+}
 
 fn main() -> Result<()> {
+    let arg_size = Args::parse().size;
+    // println!("{arg_size:?}");
+
+    let mut arg_app = App {
+        args_size: if arg_size.is_none() {
+            // default size
+            "quad".to_owned()
+        } else {
+            arg_size.unwrap()
+        },
+        year_month_day: String::new(),
+        weekday: String::new(),
+        time: String::new(),
+        exit: false,
+    };
+
     errors::install_hooks()?;
     let mut terminal = tui::init()?;
-    App::default().run(&mut terminal)?;
+    arg_app.run(&mut terminal)?;
+    // App::default().run(&mut terminal)?;
     tui::restore()?;
     Ok(())
 }
@@ -21,6 +50,7 @@ pub struct App {
     weekday: String,
     time: String,
     exit: bool,
+    args_size: String,
 }
 
 impl App {
@@ -34,10 +64,19 @@ impl App {
         Ok(())
     }
 
-    fn centered_rect(r: Rect) -> Rect {
-        // tui-big-text full size is 8x8
-        let clock_height = 8 + 1;
-        let clock_width = (8 * 8) + 2;
+    fn centered_rect(&self, r: Rect) -> Rect {
+        let clock_height: u16 = match &self.args_size.as_str() {
+            &"full" => 8 + 1,
+            &"half" => 8 + 1,
+            _ => 4 + 2,
+        };
+
+        let clock_width: u16 = match &self.args_size.as_str() {
+            &"full" => 8,
+            &"half" => 4,
+            _ => 4,
+        };
+
         let popup_layout = Layout::default()
             .direction(Direction::Vertical)
             .constraints([
@@ -51,10 +90,10 @@ impl App {
         Layout::default()
             .direction(Direction::Horizontal)
             .constraints([
-                Constraint::Percentage((100 - clock_width) / 2),
-                Constraint::Min(clock_width),
-                Constraint::Max(clock_width),
-                Constraint::Percentage((100 - clock_width) / 2),
+                Constraint::Percentage((100 - clock_width * 8) / 2),
+                Constraint::Min(clock_width * 8),
+                Constraint::Max(clock_width * 8),
+                Constraint::Percentage((100 - clock_width * 8) / 2),
             ])
             .split(popup_layout[1])[1]
     }
@@ -63,20 +102,39 @@ impl App {
         let ymd = <String as Clone>::clone(&self.year_month_day);
         let weekday = <String as Clone>::clone(&self.weekday);
         let block = Block::new()
+            // .borders(Borders::ALL)
             .title(format!(" {} {} ", ymd, weekday))
             .title_bottom(Line::from(" exit: <q> or <Esc> ").centered());
 
-        // let center_frame= App::centered_rect(frame.size());
-        let center_frame = App::centered_rect(frame.size());
+        let center_frame = App::centered_rect(&self, frame.size());
         frame.render_widget(&block, center_frame);
 
-        let big_text = BigText::builder()
+        let full_clock = BigText::builder()
             .style(Style::new())
             .pixel_size(PixelSize::Full)
             .lines(vec![<String as Clone>::clone(&self.time).into()])
             .build()
             .unwrap();
-        frame.render_widget(big_text, block.inner(center_frame));
+        let half_clock = BigText::builder()
+            .style(Style::new())
+            .pixel_size(PixelSize::HalfWidth)
+            .lines(vec![<String as Clone>::clone(&self.time).into()])
+            .build()
+            .unwrap();
+        let quad_clock = BigText::builder()
+            .style(Style::new())
+            .pixel_size(PixelSize::Quadrant)
+            .lines(vec![<String as Clone>::clone(&self.time).into()])
+            .build()
+            .unwrap();
+
+        match &self.args_size.as_str() {
+            &"full" => frame.render_widget(full_clock, block.inner(center_frame)),
+            &"half" => frame.render_widget(half_clock, block.inner(center_frame)),
+            _ => frame.render_widget(quad_clock, block.inner(center_frame)),
+        }
+
+        // frame.render_widget(full_clock, block.inner(center_frame));
     }
 
     fn tictac(&mut self) {
