@@ -2,7 +2,7 @@
 
 simple terminal clock.
 
-![](https://raw.githubusercontent.com/amatagonsk/klok/img/demo.avif)
+<img src="https://raw.githubusercontent.com/amatagonsk/klok/master/img/demo.avif" width="50%" />
 
 ## installation
 
