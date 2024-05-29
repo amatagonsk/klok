@@ -1,6 +1,6 @@
 use chrono::{DateTime, Datelike, Local};
 use color_eyre::{eyre::WrapErr, Result};
-use crossterm::event::{self, Event, KeyCode, KeyEvent};
+use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind};
 use ratatui::{prelude::*, widgets::*};
 use std::time::Duration;
 use tui_big_text::{BigText, PixelSize};
@@ -14,7 +14,7 @@ struct Args {
     #[arg(
         short = 's',
         long,
-        value_parser = clap::builder::PossibleValuesParser::new(["full", "half","quad"])
+        value_parser = clap::builder::PossibleValuesParser::new(["full", "half","quadrant","sextant"])
     )]
     size: Option<String>,
 }
@@ -24,12 +24,7 @@ fn main() -> Result<()> {
     // println!("{arg_size:?}");
 
     let mut arg_app = App {
-        args_size: if arg_size.is_none() {
-            // default size
-            "quad".to_string()
-        } else {
-            arg_size.unwrap()
-        },
+        args_size: arg_size.unwrap_or("quadrant".to_string()),
         year_month_day: String::new(),
         weekday: String::new(),
         time: String::new(),
@@ -67,12 +62,14 @@ impl App {
         let clock_height: u16 = match &self.args_size.as_str() {
             &"full" => 8 + 1,
             &"half" => 8 + 1,
+            &"sextant" => 3 + 2,
             _ => 4 + 2,
         };
 
         let clock_width: u16 = match &self.args_size.as_str() {
             &"full" => 8 * 8 + 1,
             &"half" => 4 * 8 + 2,
+            &"sextant" => 4 * 8 + 2,
             _ => 4 * 8 + 2,
         };
 
@@ -119,6 +116,14 @@ impl App {
                 BigText::builder()
                     .style(Style::new())
                     .pixel_size(PixelSize::HalfWidth)
+                    .lines(vec![(&self.time).to_string().into()])
+                    .build()?,
+                block.inner(center_frame),
+            ),
+            &"sextant" => frame.render_widget(
+                BigText::builder()
+                    .style(Style::new())
+                    .pixel_size(PixelSize::Sextant)
                     .lines(vec![(&self.time).to_string().into()])
                     .build()?,
                 block.inner(center_frame),
@@ -171,7 +176,9 @@ impl App {
         if &self.args_size == "full" {
             self.args_size = "half".to_string();
         } else if &self.args_size == "half" {
-            self.args_size = "quad".to_string();
+            self.args_size = "quadrant".to_string();
+        } else if &self.args_size == "quadrant" {
+            self.args_size = "sextant".to_string();
         } else {
             self.args_size = "full".to_string();
         }
