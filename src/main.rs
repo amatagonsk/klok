@@ -160,9 +160,19 @@ impl App {
         match key_event.code {
             KeyCode::Char('q') => self.exit(),
             KeyCode::Esc => self.exit(),
+            KeyCode::Tab => self.change_size(),
             _ => {}
         }
         Ok(())
+    }
+    fn change_size(&mut self) {
+        if &self.args_size == "full" {
+            self.args_size = "half".to_string();
+        } else if &self.args_size == "half" {
+            self.args_size = "quad".to_string();
+        } else {
+            self.args_size = "full".to_string();
+        }
     }
 
     fn exit(&mut self) {
