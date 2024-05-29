@@ -30,3 +30,7 @@ i guess your terminal font is not support [Symbols for Legacy Computing - Wikipe
 
 as far as I know, [microsoftcascadia-code](https://github.com/microsoft/cascadia-code) font is supported.
 
+## nice framework
+
+[ratatui](https://github.com/ratatui-org/ratatui)  
+[tui-big-text](https://github.com/joshka/tui-big-text)  
