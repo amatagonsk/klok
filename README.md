@@ -1,4 +1,4 @@
-# klock
+# klok
 
 simple terminal clock.
 
