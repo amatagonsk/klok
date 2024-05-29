@@ -26,7 +26,7 @@ fn main() -> Result<()> {
     let mut arg_app = App {
         args_size: if arg_size.is_none() {
             // default size
-            "quad".to_owned()
+            "quad".to_string()
         } else {
             arg_size.unwrap()
         },
@@ -39,7 +39,6 @@ fn main() -> Result<()> {
     errors::install_hooks()?;
     let mut terminal = tui::init()?;
     arg_app.run(&mut terminal)?;
-    // App::default().run(&mut terminal)?;
     tui::restore()?;
     Ok(())
 }
@@ -57,7 +56,7 @@ impl App {
     /// runs the application's main loop until the user quits
     pub fn run(&mut self, terminal: &mut tui::Tui) -> Result<()> {
         while !self.exit {
-            terminal.draw(|frame| self.render_frame(frame))?;
+            terminal.draw(|frame| self.render_frame(frame).expect("failed to render"))?;
             self.handle_events().wrap_err("handle events failed")?;
             self.tictac();
         }
@@ -96,43 +95,44 @@ impl App {
             .split(popup_layout[1])[1]
     }
 
-    fn render_frame(&self, frame: &mut Frame) {
-        let ymd = <String as Clone>::clone(&self.year_month_day);
-        let weekday = <String as Clone>::clone(&self.weekday);
+    fn render_frame(&self, frame: &mut Frame) -> Result<()> {
+        let ymd = &self.year_month_day;
+        let weekday = &self.weekday;
         let block = Block::new()
             // .borders(Borders::ALL)
-            .title(format!(" {} {} ", ymd, weekday))
+            .title(format!(" {ymd} {weekday} "))
             .title_bottom(Line::from(" exit: <q> or <Esc> ").centered());
 
         let center_frame = App::centered_rect(&self, frame.size());
         frame.render_widget(&block, center_frame);
 
-        let full_clock = BigText::builder()
-            .style(Style::new())
-            .pixel_size(PixelSize::Full)
-            .lines(vec![<String as Clone>::clone(&self.time).into()])
-            .build()
-            .unwrap();
-        let half_clock = BigText::builder()
-            .style(Style::new())
-            .pixel_size(PixelSize::HalfWidth)
-            .lines(vec![<String as Clone>::clone(&self.time).into()])
-            .build()
-            .unwrap();
-        let quad_clock = BigText::builder()
-            .style(Style::new())
-            .pixel_size(PixelSize::Quadrant)
-            .lines(vec![<String as Clone>::clone(&self.time).into()])
-            .build()
-            .unwrap();
-
         match &self.args_size.as_str() {
-            &"full" => frame.render_widget(full_clock, block.inner(center_frame)),
-            &"half" => frame.render_widget(half_clock, block.inner(center_frame)),
-            _ => frame.render_widget(quad_clock, block.inner(center_frame)),
+            &"full" => frame.render_widget(
+                BigText::builder()
+                    .style(Style::new())
+                    .pixel_size(PixelSize::Full)
+                    .lines(vec![(&self.time).to_string().into()])
+                    .build()?,
+                block.inner(center_frame),
+            ),
+            &"half" => frame.render_widget(
+                BigText::builder()
+                    .style(Style::new())
+                    .pixel_size(PixelSize::HalfWidth)
+                    .lines(vec![(&self.time).to_string().into()])
+                    .build()?,
+                block.inner(center_frame),
+            ),
+            _ => frame.render_widget(
+                BigText::builder()
+                    .style(Style::new())
+                    .pixel_size(PixelSize::Quadrant)
+                    .lines(vec![(&self.time).to_string().into()])
+                    .build()?,
+                block.inner(center_frame),
+            ),
         }
-
-        // frame.render_widget(full_clock, block.inner(center_frame));
+        Ok(())
     }
 
     fn tictac(&mut self) {
@@ -148,8 +148,7 @@ impl App {
     /// updates the application's state based on user input
     fn handle_events(&mut self) -> Result<()> {
         // idk best refresh rate
-        let timeout = Duration::from_millis(250);
-        if event::poll(timeout)? {
+        if event::poll(Duration::from_millis(250))? {
             if let Event::Key(key_event) = event::read()? {
                 self.handle_key_event(key_event)?
             }
