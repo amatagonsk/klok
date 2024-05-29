@@ -157,11 +157,13 @@ impl App {
     }
 
     fn handle_key_event(&mut self, key_event: KeyEvent) -> Result<()> {
-        match key_event.code {
-            KeyCode::Char('q') => self.exit(),
-            KeyCode::Esc => self.exit(),
-            KeyCode::Tab => self.change_size(),
-            _ => {}
+        if key_event.kind == KeyEventKind::Press {
+            match key_event.code {
+                KeyCode::Char('q') => self.exit(),
+                KeyCode::Esc => self.exit(),
+                KeyCode::Tab => self.change_size(),
+                _ => {}
+            }
         }
         Ok(())
     }
