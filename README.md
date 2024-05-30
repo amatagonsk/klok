@@ -10,6 +10,7 @@ simple terminal clock.
 cargo install --git https://github.com/amatagonsk/klok.git
 ```
 
+or download from [release](https://github.com/amatagonsk/klok/releases)
 
 ## --help
 
