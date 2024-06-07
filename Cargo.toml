@@ -8,7 +8,7 @@ edition = "2021"
 [dependencies]
 color-eyre = "0.6.3"
 crossterm = "0.27.0"
-ratatui = "0.26.2"
-tui-big-text = "0.4.3"
+ratatui = "0.26.3"
+tui-big-text = "0.4.4"
 chrono = "0.4"
 clap = { version = "4.5.4", features = ["derive"] }
