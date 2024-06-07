@@ -15,21 +15,25 @@ struct Args {
     #[arg(
         short = 's',
         long,
-        value_parser = clap::builder::PossibleValuesParser::new(["full", "half","quadrant","sextant"])
+        value_parser = clap::builder::PossibleValuesParser::new(["full", "half","quadrant","sextant", "analog"])
     )]
     size: Option<String>,
 }
 
 fn main() -> Result<()> {
-    let arg_size = Args::parse().size;
-    // println!("{arg_size:?}");
+    let arg_size = Args::parse().size.unwrap_or_else(|| "quadrant".to_string());
 
+    let (arg_size, arg_is_analog) = if arg_size == "analog" {
+        ("quadrant".to_string(), true)
+    } else {
+        (arg_size, false)
+    };
     errors::install_hooks()?;
     let mut terminal = tui::init()?;
     let mut arg_app = App {
-        args_size: arg_size.unwrap_or_else(|| "quadrant".to_string()),
+        args_size: arg_size,
         marker: Marker::Braille,
-        is_canvas: false,
+        is_canvas: arg_is_analog,
         exit: false,
         ..Default::default()
     };
