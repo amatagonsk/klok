@@ -1,13 +1,12 @@
 use canvas::Canvas;
-use chrono::{DateTime, Datelike, Local};
+use chrono::{DateTime, Datelike, Local, Timelike};
 use color_eyre::{eyre::WrapErr, Result};
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind};
 use ratatui::{prelude::*, widgets::*};
-use std::time::Duration;
+use std::{f64::consts::PI, time::Duration};
 use tui_big_text::{BigText, PixelSize};
 mod errors;
 mod tui;
-use canvas::Line;
 use clap::{arg, command, Parser};
 
 #[derive(Parser, Debug)]
@@ -32,11 +31,14 @@ fn main() -> Result<()> {
         year_month_day: String::new(),
         weekday: String::new(),
         time: String::new(),
-        center_origin: Point { x: 0.0, y: 0.0 },
-        hour_point: Point { x: 0.0, y: 0.0 },
-        min_point: Point { x: 0.0, y: 0.0 },
-        sec_point: Point { x: 30.0, y: 40.0 },
-        marker: Marker::Dot,
+        center_origin: Point { x: 0., y: 0. },
+        hour_point: Point { x: 0., y: 0. },
+        min_point: Point { x: 0., y: 0. },
+        sec_point: Point { x: 0., y: 0. },
+        hour_scale: 0.,
+        min_scale: 0.,
+        sec_scale: 0.,
+        marker: Marker::Braille,
         is_canvas: false,
         exit: false,
     };
@@ -58,6 +60,9 @@ pub struct App {
     sec_point: Point,
     is_canvas: bool,
     marker: ratatui::prelude::Marker,
+    hour_scale: f64,
+    min_scale: f64,
+    sec_scale: f64,
 }
 struct Point {
     x: f64,
@@ -114,11 +119,9 @@ impl App {
     }
 
     fn render_frame(&self, frame: &mut Frame) -> Result<()> {
-        let ymd = &self.year_month_day;
-        let weekday = &self.weekday;
         let block = Block::new()
             // .borders(Borders::ALL)
-            .title(format!(" {ymd} {weekday} "))
+            .title(format!(" {} {} ", &self.year_month_day, &self.weekday))
             .title_bottom(ratatui::text::Line::from(" exit: <q> or <Esc> ").centered());
 
         let center_frame = App::centered_rect(&self, frame.size());
@@ -161,13 +164,31 @@ impl App {
         Ok(())
     }
 
-    fn ui(&self, frame: &mut Frame) {
-        frame.render_widget(self.analog_clock(), frame.size());
+    fn ui(&mut self, frame: &mut Frame) {
+        frame.render_widget(self.analog_clock(frame.size()), frame.size());
     }
 
-    fn analog_clock(&self) -> impl Widget + '_ {
+    fn analog_clock(&mut self, area: Rect) -> impl Widget + '_ {
+        let left = 0.0;
+        let right = f64::from(area.width);
+        let bottom = 0.0;
+        let top = f64::from(area.height).mul_add(2.0, -4.0);
+        self.center_origin.x = right / 2 as f64;
+        self.center_origin.y = top / 2 as f64;
+
+        // todo longer one
+        self.hour_scale = self.center_origin.y * 0.6;
+        self.min_scale = self.center_origin.y * 0.9;
+        self.sec_scale = self.center_origin.y * 0.8;
+
+        // let ymd = &self.year_month_day;
+        // let weekday = &self.weekday;
         Canvas::default()
-            .block(Block::bordered().title("Pong"))
+            .block(
+                Block::new()
+                    .title(format!(" {} {} ", &self.year_month_day, &self.weekday))
+                    .title_alignment(Alignment::Center),
+            )
             .marker(self.marker)
             .paint(|ctx| {
                 ctx.draw(&ratatui::widgets::canvas::Line {
@@ -175,9 +196,25 @@ impl App {
                     y1: self.center_origin.y,
                     x2: self.sec_point.x,
                     y2: self.sec_point.y,
+                    color: Color::DarkGray,
+                });
+                ctx.draw(&ratatui::widgets::canvas::Line {
+                    x1: self.center_origin.x,
+                    y1: self.center_origin.y,
+                    x2: self.min_point.x,
+                    y2: self.min_point.y,
                     ..Default::default()
                 });
+                ctx.draw(&ratatui::widgets::canvas::Line {
+                    x1: self.center_origin.x,
+                    y1: self.center_origin.y,
+                    x2: self.hour_point.x,
+                    y2: self.hour_point.y,
+                    color: Color::Red,
+                });
             })
+            .x_bounds([left, right])
+            .y_bounds([bottom, top])
     }
 
     fn tictac(&mut self) {
@@ -185,6 +222,41 @@ impl App {
         self.time = format!("{}", local_date_time.format("%H:%M:%S"));
         self.year_month_day = format!("{}", local_date_time.format("%Y-%m-%d"));
         self.weekday = format!("{}", local_date_time.weekday());
+
+        self.hour_point.x = ((((90 as f32)
+            - (local_date_time.hour12().1 as f32) * 30.
+            - 0.5 * (local_date_time.minute() as f32)) as f64
+            * PI
+            / 180.0)
+            .cos())
+            * self.hour_scale
+            + self.center_origin.x;
+        self.hour_point.y = ((((90 as f32)
+            - (local_date_time.hour12().1 as f32) * 30.
+            - 0.5 * (local_date_time.minute() as f32)) as f64
+            * PI
+            / 180.0)
+            .sin())
+            * self.hour_scale
+            + self.center_origin.y;
+
+        self.min_point.x =
+            ((((90 as i32) - (local_date_time.minute() as i32) * 6) as f64 * PI / 180.0).cos())
+                * self.min_scale
+                + self.center_origin.x;
+        self.min_point.y =
+            ((((90 as i32) - (local_date_time.minute() as i32) * 6) as f64 * PI / 180.0).sin())
+                * self.min_scale
+                + self.center_origin.y;
+
+        self.sec_point.x =
+            ((((90 as i32) - (local_date_time.second() as i32) * 6) as f64 * PI / 180.0).cos())
+                * self.sec_scale
+                + self.center_origin.x;
+        self.sec_point.y =
+            ((((90 as i32) - (local_date_time.second() as i32) * 6) as f64 * PI / 180.0).sin())
+                * self.sec_scale
+                + self.center_origin.y;
     }
 
     /// updates the application's state based on user input
