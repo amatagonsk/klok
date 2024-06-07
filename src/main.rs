@@ -23,16 +23,15 @@ fn main() -> Result<()> {
     let arg_size = Args::parse().size;
     // println!("{arg_size:?}");
 
+    errors::install_hooks()?;
+    let mut terminal = tui::init()?;
     let mut arg_app = App {
-        args_size: arg_size.unwrap_or("quadrant".to_string()),
+        args_size: arg_size.unwrap_or_else(|| "quadrant".to_string()),
         year_month_day: String::new(),
         weekday: String::new(),
         time: String::new(),
         exit: false,
     };
-
-    errors::install_hooks()?;
-    let mut terminal = tui::init()?;
     arg_app.run(&mut terminal)?;
     tui::restore()?;
     Ok(())
@@ -142,12 +141,9 @@ impl App {
 
     fn tictac(&mut self) {
         let local_date_time: DateTime<Local> = Local::now();
-        let local_time_formatted = format!("{}", local_date_time.format("%H:%M:%S"));
-        let local_ymd_formatted = format!("{}", local_date_time.format("%Y-%m-%d"));
-        let local_weekday = format!("{}", local_date_time.weekday());
-        self.time = local_time_formatted;
-        self.year_month_day = local_ymd_formatted;
-        self.weekday = local_weekday;
+        self.time = format!("{}", local_date_time.format("%H:%M:%S"));
+        self.year_month_day = format!("{}", local_date_time.format("%Y-%m-%d"));
+        self.weekday = format!("{}", local_date_time.weekday());
     }
 
     /// updates the application's state based on user input
@@ -164,8 +160,7 @@ impl App {
     fn handle_key_event(&mut self, key_event: KeyEvent) -> Result<()> {
         if key_event.kind == KeyEventKind::Press {
             match key_event.code {
-                KeyCode::Char('q') => self.exit(),
-                KeyCode::Esc => self.exit(),
+                KeyCode::Char('q') | KeyCode::Esc => self.exit(),
                 KeyCode::Tab => self.change_size(),
                 _ => {}
             }
