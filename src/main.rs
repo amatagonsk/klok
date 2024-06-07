@@ -1,3 +1,4 @@
+use canvas::Canvas;
 use chrono::{DateTime, Datelike, Local};
 use color_eyre::{eyre::WrapErr, Result};
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind};
@@ -6,6 +7,7 @@ use std::time::Duration;
 use tui_big_text::{BigText, PixelSize};
 mod errors;
 mod tui;
+use canvas::Line;
 use clap::{arg, command, Parser};
 
 #[derive(Parser, Debug)]
@@ -30,6 +32,12 @@ fn main() -> Result<()> {
         year_month_day: String::new(),
         weekday: String::new(),
         time: String::new(),
+        center_origin: Point { x: 0.0, y: 0.0 },
+        hour_point: Point { x: 0.0, y: 0.0 },
+        min_point: Point { x: 0.0, y: 0.0 },
+        sec_point: Point { x: 30.0, y: 40.0 },
+        marker: Marker::Dot,
+        is_canvas: false,
         exit: false,
     };
     arg_app.run(&mut terminal)?;
@@ -37,22 +45,36 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-#[derive(Debug, Default)]
+// #[derive(Debug, Default)]
 pub struct App {
     year_month_day: String,
     weekday: String,
     time: String,
     exit: bool,
     args_size: String,
+    center_origin: Point,
+    hour_point: Point,
+    min_point: Point,
+    sec_point: Point,
+    is_canvas: bool,
+    marker: ratatui::prelude::Marker,
+}
+struct Point {
+    x: f64,
+    y: f64,
 }
 
 impl App {
     /// runs the application's main loop until the user quits
     pub fn run(&mut self, terminal: &mut tui::Tui) -> Result<()> {
         while !self.exit {
-            terminal.draw(|frame| self.render_frame(frame).expect("failed to render"))?;
             self.handle_events().wrap_err("handle events failed")?;
             self.tictac();
+            if !self.is_canvas {
+                terminal.draw(|frame| self.render_frame(frame).expect("failed to render"))?;
+            } else {
+                terminal.draw(|frame| self.ui(frame))?;
+            }
         }
         Ok(())
     }
@@ -97,7 +119,7 @@ impl App {
         let block = Block::new()
             // .borders(Borders::ALL)
             .title(format!(" {ymd} {weekday} "))
-            .title_bottom(Line::from(" exit: <q> or <Esc> ").centered());
+            .title_bottom(ratatui::text::Line::from(" exit: <q> or <Esc> ").centered());
 
         let center_frame = App::centered_rect(&self, frame.size());
         frame.render_widget(&block, center_frame);
@@ -139,6 +161,25 @@ impl App {
         Ok(())
     }
 
+    fn ui(&self, frame: &mut Frame) {
+        frame.render_widget(self.analog_clock(), frame.size());
+    }
+
+    fn analog_clock(&self) -> impl Widget + '_ {
+        Canvas::default()
+            .block(Block::bordered().title("Pong"))
+            .marker(self.marker)
+            .paint(|ctx| {
+                ctx.draw(&ratatui::widgets::canvas::Line {
+                    x1: self.center_origin.x,
+                    y1: self.center_origin.y,
+                    x2: self.sec_point.x,
+                    y2: self.sec_point.y,
+                    ..Default::default()
+                });
+            })
+    }
+
     fn tictac(&mut self) {
         let local_date_time: DateTime<Local> = Local::now();
         self.time = format!("{}", local_date_time.format("%H:%M:%S"));
@@ -162,20 +203,24 @@ impl App {
             match key_event.code {
                 KeyCode::Char('q') | KeyCode::Esc => self.exit(),
                 KeyCode::Tab => self.change_size(),
+                KeyCode::Char('a') => self.is_canvas = false,
                 _ => {}
             }
         }
         Ok(())
     }
     fn change_size(&mut self) {
-        if &self.args_size == "full" {
+        if self.is_canvas == true {
+            self.is_canvas = false;
+            self.args_size = "full".to_string();
+        } else if &self.args_size == "full" {
             self.args_size = "half".to_string();
         } else if &self.args_size == "half" {
             self.args_size = "quadrant".to_string();
         } else if &self.args_size == "quadrant" {
             self.args_size = "sextant".to_string();
         } else {
-            self.args_size = "full".to_string();
+            self.is_canvas = true;
         }
     }
 
