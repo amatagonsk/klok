@@ -28,26 +28,17 @@ fn main() -> Result<()> {
     let mut terminal = tui::init()?;
     let mut arg_app = App {
         args_size: arg_size.unwrap_or_else(|| "quadrant".to_string()),
-        year_month_day: String::new(),
-        weekday: String::new(),
-        time: String::new(),
-        center_origin: Point { x: 0., y: 0. },
-        hour_point: Point { x: 0., y: 0. },
-        min_point: Point { x: 0., y: 0. },
-        sec_point: Point { x: 0., y: 0. },
-        hour_scale: 0.,
-        min_scale: 0.,
-        sec_scale: 0.,
         marker: Marker::Braille,
         is_canvas: false,
         exit: false,
+        ..Default::default()
     };
     arg_app.run(&mut terminal)?;
     tui::restore()?;
     Ok(())
 }
 
-// #[derive(Debug, Default)]
+#[derive(Debug, Default)]
 pub struct App {
     year_month_day: String,
     weekday: String,
@@ -64,6 +55,7 @@ pub struct App {
     min_scale: f64,
     sec_scale: f64,
 }
+#[derive(Debug, Default)]
 struct Point {
     x: f64,
     y: f64,
@@ -76,9 +68,9 @@ impl App {
             self.handle_events().wrap_err("handle events failed")?;
             self.tictac();
             if !self.is_canvas {
-                terminal.draw(|frame| self.render_frame(frame).expect("failed to render"))?;
+                terminal.draw(|frame| self.render_digital(frame).expect("failed to render"))?;
             } else {
-                terminal.draw(|frame| self.ui(frame))?;
+                terminal.draw(|frame| self.render_analog(frame).expect("failed to render"))?;
             }
         }
         Ok(())
@@ -118,7 +110,7 @@ impl App {
             .split(popup_layout[1])[1]
     }
 
-    fn render_frame(&self, frame: &mut Frame) -> Result<()> {
+    fn render_digital(&self, frame: &mut Frame) -> Result<()> {
         let block = Block::new()
             // .borders(Borders::ALL)
             .title(format!(" {} {} ", &self.year_month_day, &self.weekday))
@@ -164,8 +156,9 @@ impl App {
         Ok(())
     }
 
-    fn ui(&mut self, frame: &mut Frame) {
+    fn render_analog(&mut self, frame: &mut Frame) -> Result<()> {
         frame.render_widget(self.analog_clock(frame.size()), frame.size());
+        Ok(())
     }
 
     fn analog_clock(&mut self, area: Rect) -> impl Widget + '_ {
@@ -175,14 +168,10 @@ impl App {
         let top = f64::from(area.height).mul_add(2.0, -4.0);
         self.center_origin.x = right / 2 as f64;
         self.center_origin.y = top / 2 as f64;
-
-        // todo longer one
-        self.hour_scale = self.center_origin.y * 0.6;
-        self.min_scale = self.center_origin.y * 0.9;
-        self.sec_scale = self.center_origin.y * 0.8;
-
-        // let ymd = &self.year_month_day;
-        // let weekday = &self.weekday;
+        let shorter_side = if right > top { top } else { right };
+        self.hour_scale = shorter_side / 2. * 0.6;
+        self.min_scale = shorter_side / 2. * 0.9;
+        self.sec_scale = shorter_side / 2. * 0.8;
         Canvas::default()
             .block(
                 Block::new()
