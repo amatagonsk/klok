@@ -216,40 +216,29 @@ impl App {
         self.year_month_day = format!("{}", local_date_time.format("%Y-%m-%d"));
         self.weekday = format!("{}", local_date_time.weekday());
 
-        self.hour_point.x = ((((90 as f32)
-            - (local_date_time.hour12().1 as f32) * 30.
-            - 0.5 * (local_date_time.minute() as f32)) as f64
-            * PI
-            / 180.0)
-            .cos())
-            * self.hour_scale
-            + self.center_origin.x;
-        self.hour_point.y = ((((90 as f32)
-            - (local_date_time.hour12().1 as f32) * 30.
-            - 0.5 * (local_date_time.minute() as f32)) as f64
-            * PI
-            / 180.0)
-            .sin())
-            * self.hour_scale
-            + self.center_origin.y;
+        (self.hour_point.x, self.hour_point.y) = Self::clock_point(
+            ((local_date_time.hour12().1 * 30) as f32 + 0.5 * (local_date_time.minute() as f32))
+                as i32,
+            &self.hour_scale,
+            &self.center_origin,
+        );
+        (self.min_point.x, self.min_point.y) = Self::clock_point(
+            (local_date_time.minute() as i32) * 6,
+            &self.min_scale,
+            &self.center_origin,
+        );
+        (self.sec_point.x, self.sec_point.y) = Self::clock_point(
+            (local_date_time.second() as i32) * 6,
+            &self.sec_scale,
+            &self.center_origin,
+        );
+    }
 
-        self.min_point.x =
-            ((((90 as i32) - (local_date_time.minute() as i32) * 6) as f64 * PI / 180.0).cos())
-                * self.min_scale
-                + self.center_origin.x;
-        self.min_point.y =
-            ((((90 as i32) - (local_date_time.minute() as i32) * 6) as f64 * PI / 180.0).sin())
-                * self.min_scale
-                + self.center_origin.y;
-
-        self.sec_point.x =
-            ((((90 as i32) - (local_date_time.second() as i32) * 6) as f64 * PI / 180.0).cos())
-                * self.sec_scale
-                + self.center_origin.x;
-        self.sec_point.y =
-            ((((90 as i32) - (local_date_time.second() as i32) * 6) as f64 * PI / 180.0).sin())
-                * self.sec_scale
-                + self.center_origin.y;
+    fn clock_point(degree: i32, scale: &f64, origin: &Point) -> (f64, f64) {
+        (
+            (((90 - degree) as f64 * PI / 180.).cos() * scale + origin.x),
+            (((90 - degree) as f64 * PI / 180.).sin() * scale + origin.y),
+        )
     }
 
     /// updates the application's state based on user input
