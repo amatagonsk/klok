@@ -1,14 +1,21 @@
 [package]
 name = "klok"
-version = "0.2.0"
+version = "0.2.2"
 edition = "2021"
+authors = ["amatagonsk"]
+license = "MIT"
+description = "simple terminal clock."
+repository = "https://github.com/amatagonsk/klok"
+keywords = ["clock", "terminal", "ratatui", "tui"]
+categories = ["command-line-utilities"]
+readme = "README.md"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-color-eyre = "0.6.3"
-crossterm = "0.27.0"
-ratatui = "0.26.3"
-tui-big-text = "0.4.4"
+color-eyre = "0.6"
+crossterm = "0.27"
+ratatui = "0.27"
+tui-big-text = "0.4"
 chrono = "0.4"
-clap = { version = "4.5.4", features = ["derive"] }
+clap = { version = "4.5", features = ["derive"] }

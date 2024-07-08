@@ -2,7 +2,7 @@ use canvas::Canvas;
 use chrono::{DateTime, Datelike, Local, Timelike};
 use color_eyre::{eyre::WrapErr, Result};
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind};
-use ratatui::{prelude::*, widgets::*};
+use ratatui::{prelude::*, widgets::*, symbols::Marker};
 use std::{f64::consts::PI, time::Duration};
 use tui_big_text::{BigText, PixelSize};
 mod errors;
@@ -54,7 +54,7 @@ pub struct App {
     min_point: Point,
     sec_point: Point,
     is_canvas: bool,
-    marker: ratatui::prelude::Marker,
+    marker: Marker,
     hour_scale: f64,
     min_scale: f64,
     sec_scale: f64,
