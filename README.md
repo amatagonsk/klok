@@ -28,7 +28,7 @@ Options:
   -V, --version      Print version
 ```
 
-and `tab` key change size.
+and `tab` or `middle mouse button` key change size.
 
 ## mojibake? (at sextant size)
 
