@@ -65,6 +65,14 @@ pub struct App {
     hour_scale: f64,
     min_scale: f64,
     sec_scale: f64,
+    // frame_.* for mouse event
+    frame_x: u16,
+    frame_width: u16,
+    frame_y: u16,
+    frame_height: u16,
+    frame_is_vertical_short: bool,
+    frame_shorter: u16,
+    frame_longer: u16,
 }
 #[derive(Debug, Default)]
 struct Point {
@@ -121,13 +129,24 @@ impl App {
             .split(popup_layout[1])[1]
     }
 
-    fn render_digital(&self, frame: &mut Frame) -> Result<()> {
+    fn render_digital(&mut self, frame: &mut Frame) -> Result<()> {
         let block = Block::new()
             // .borders(Borders::ALL)
             .title(format!(" {} {} ", &self.year_month_day, &self.weekday))
             .title_bottom(ratatui::text::Line::from(" exit: <q> or <Esc> ").centered());
 
         let center_frame = App::centered_rect(&self, frame.area());
+        (
+            self.frame_x,
+            self.frame_y,
+            self.frame_width,
+            self.frame_height,
+        ) = (
+            center_frame.x,
+            center_frame.y,
+            center_frame.width,
+            center_frame.height,
+        );
         frame.render_widget(&block, center_frame);
 
         match &self.args_size.as_str() {
@@ -180,6 +199,10 @@ impl App {
         self.center_origin.x = right / 2 as f64;
         self.center_origin.y = top / 2 as f64;
         let shorter_side = if right > top { top } else { right };
+        let longer_side = if right > top { right } else { top };
+        self.frame_shorter = shorter_side as u16;
+        self.frame_longer = longer_side as u16;
+        self.frame_is_vertical_short = if right > top { true } else { false };
         self.hour_scale = shorter_side / 2. * 0.6;
         self.min_scale = shorter_side / 2. * 0.9;
         self.sec_scale = shorter_side / 2. * 0.8;
@@ -273,8 +296,29 @@ impl App {
     }
 
     fn handle_mouse_event(&mut self, mouse_event: MouseEvent) {
-        if mouse_event.kind == MouseEventKind::Down(MouseButton::Middle) {
-            self.change_size();
+        let mut canvas_x: u16 = 0;
+        let mut canvas_y: u16 = 0;
+        if self.frame_is_vertical_short {
+            canvas_x = (self.frame_longer - self.frame_shorter) / 2
+        } else {
+            canvas_y = (self.frame_longer - self.frame_shorter) / 2
+        };
+        if mouse_event.kind == MouseEventKind::Down(MouseButton::Left) {
+            // digital
+            if !self.is_canvas
+                && self.frame_x < mouse_event.column
+                && mouse_event.column < self.frame_x + self.frame_width
+                && self.frame_y < mouse_event.row
+                && mouse_event.row < self.frame_y + self.frame_height
+            // analog
+            || self.is_canvas
+                && canvas_x < mouse_event.column
+                && mouse_event.column < canvas_x + self.frame_shorter
+                && canvas_y < mouse_event.row
+                && mouse_event.row < canvas_y + self.frame_shorter
+            {
+                self.change_size();
+            }
         }
     }
 
