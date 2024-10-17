@@ -9,7 +9,7 @@ use crossterm::{
     execute,
 };
 use ratatui::{prelude::*, symbols::Marker, widgets::*};
-use std::{f64::consts::PI, io::stdout};
+use std::{f64::consts::PI, io::stdout, time::Duration};
 use tui_big_text::{BigText, PixelSize};
 mod errors;
 mod tui;
@@ -250,10 +250,13 @@ impl App {
 
     /// updates the application's state based on user input
     fn handle_events(&mut self) -> Result<()> {
-        match event::read()? {
-            Event::Key(key_event) => self.handle_key_event(key_event),
-            Event::Mouse(mouse_event) => self.handle_mouse_event(mouse_event),
-            _ => (),
+        // idk best refresh rate
+        if event::poll(Duration::from_millis(250))? {
+            match event::read()? {
+                Event::Key(key_event) => self.handle_key_event(key_event),
+                Event::Mouse(mouse_event) => self.handle_mouse_event(mouse_event),
+                _ => (),
+            }
         }
         Ok(())
     }
