@@ -120,7 +120,7 @@ impl App {
             .title(format!(" {} {} ", &self.year_month_day, &self.weekday))
             .title_bottom(ratatui::text::Line::from(" exit: <q> or <Esc> ").centered());
 
-        let center_frame = App::centered_rect(&self, frame.size());
+        let center_frame = App::centered_rect(&self, frame.area());
         frame.render_widget(&block, center_frame);
 
         match &self.args_size.as_str() {
@@ -129,7 +129,7 @@ impl App {
                     .style(Style::new())
                     .pixel_size(PixelSize::Full)
                     .lines(vec![(&self.time).to_string().into()])
-                    .build()?,
+                    .build(),
                 block.inner(center_frame),
             ),
             &"half" => frame.render_widget(
@@ -137,7 +137,7 @@ impl App {
                     .style(Style::new())
                     .pixel_size(PixelSize::HalfWidth)
                     .lines(vec![(&self.time).to_string().into()])
-                    .build()?,
+                    .build(),
                 block.inner(center_frame),
             ),
             &"sextant" => frame.render_widget(
@@ -145,7 +145,7 @@ impl App {
                     .style(Style::new())
                     .pixel_size(PixelSize::Sextant)
                     .lines(vec![(&self.time).to_string().into()])
-                    .build()?,
+                    .build(),
                 block.inner(center_frame),
             ),
             _ => frame.render_widget(
@@ -153,7 +153,7 @@ impl App {
                     .style(Style::new())
                     .pixel_size(PixelSize::Quadrant)
                     .lines(vec![(&self.time).to_string().into()])
-                    .build()?,
+                    .build(),
                 block.inner(center_frame),
             ),
         }
@@ -161,7 +161,7 @@ impl App {
     }
 
     fn render_analog(&mut self, frame: &mut Frame) -> Result<()> {
-        frame.render_widget(self.analog_clock(frame.size()), frame.size());
+        frame.render_widget(self.analog_clock(frame.area()), frame.area());
         Ok(())
     }
 
