@@ -1,9 +1,15 @@
 use canvas::Canvas;
 use chrono::{DateTime, Datelike, Local, Timelike};
 use color_eyre::{eyre::WrapErr, Result};
-use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind};
-use ratatui::{prelude::*, widgets::*, symbols::Marker};
-use std::{f64::consts::PI, time::Duration};
+use crossterm::{
+    event::{
+        self, EnableMouseCapture, Event, KeyCode, KeyEvent, KeyEventKind, MouseButton, MouseEvent,
+        MouseEventKind,
+    },
+    execute,
+};
+use ratatui::{prelude::*, symbols::Marker, widgets::*};
+use std::{f64::consts::PI, io::stdout};
 use tui_big_text::{BigText, PixelSize};
 mod errors;
 mod tui;
@@ -30,6 +36,7 @@ fn main() -> Result<()> {
     };
     errors::install_hooks()?;
     let mut terminal = tui::init()?;
+    execute!(stdout(), EnableMouseCapture)?;
     let mut arg_app = App {
         args_size: arg_size,
         marker: Marker::Braille,
@@ -243,16 +250,15 @@ impl App {
 
     /// updates the application's state based on user input
     fn handle_events(&mut self) -> Result<()> {
-        // idk best refresh rate
-        if event::poll(Duration::from_millis(250))? {
-            if let Event::Key(key_event) = event::read()? {
-                self.handle_key_event(key_event)?
-            }
+        match event::read()? {
+            Event::Key(key_event) => self.handle_key_event(key_event),
+            Event::Mouse(mouse_event) => self.handle_mouse_event(mouse_event),
+            _ => (),
         }
         Ok(())
     }
 
-    fn handle_key_event(&mut self, key_event: KeyEvent) -> Result<()> {
+    fn handle_key_event(&mut self, key_event: KeyEvent) {
         if key_event.kind == KeyEventKind::Press {
             match key_event.code {
                 KeyCode::Char('q') | KeyCode::Esc => self.exit(),
@@ -261,8 +267,14 @@ impl App {
                 _ => {}
             }
         }
-        Ok(())
     }
+
+    fn handle_mouse_event(&mut self, mouse_event: MouseEvent) {
+        if mouse_event.kind == MouseEventKind::Down(MouseButton::Middle) {
+            self.change_size();
+        }
+    }
+
     fn change_size(&mut self) {
         if self.is_canvas == true {
             self.is_canvas = false;
