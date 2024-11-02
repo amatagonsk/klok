@@ -314,8 +314,8 @@ impl App {
             || self.is_canvas
                 && canvas_x < mouse_event.column
                 && mouse_event.column < canvas_x + self.frame_shorter
-                && canvas_y < mouse_event.row
-                && mouse_event.row < canvas_y + self.frame_shorter
+                && (canvas_y * 10 / 21) < mouse_event.row
+                && mouse_event.row < ((canvas_y + self.frame_shorter) * 10 / 21)
             {
                 self.change_size();
             }
