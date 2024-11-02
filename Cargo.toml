@@ -1,6 +1,6 @@
 [package]
 name = "klok"
-version = "0.2.5"
+version = "0.2.6"
 edition = "2021"
 authors = ["amatagonsk"]
 license = "MIT"
@@ -15,7 +15,7 @@ readme = "README.md"
 [dependencies]
 color-eyre = "0.6"
 crossterm = "0.28"
-ratatui = "0.28"
-tui-big-text = "0.6"
+ratatui = "0.29"
+tui-big-text = "0.7"
 chrono = "0.4"
 clap = { version = "4.5", features = ["derive"] }
