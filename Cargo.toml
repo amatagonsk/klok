@@ -14,8 +14,8 @@ readme = "README.md"
 
 [dependencies]
 color-eyre = "0.6"
-crossterm = "0.28"
-ratatui = "0.29"
-tui-big-text = "0.7"
+crossterm = "0.29"
+ratatui = "0.30"
+tui-big-text = "0.8"
 chrono = "0.4"
-clap = { version = "4.5", features = ["derive"] }
+clap = { version = "4.6", features = ["derive"] }
