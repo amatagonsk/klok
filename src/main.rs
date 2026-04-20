@@ -8,12 +8,13 @@ use crossterm::{
     },
     execute,
 };
-use ratatui::{prelude::*, symbols::Marker, widgets::*};
+use ratatui::{layout::Offset, prelude::*, symbols::Marker, widgets::*};
 use std::{f64::consts::PI, io::stdout, time::Duration};
 use tui_big_text::{BigText, PixelSize};
+use tui_box_text::BoxChar;
 mod errors;
 mod tui;
-use clap::{arg, command, Parser};
+use clap::Parser;
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
@@ -21,7 +22,7 @@ struct Args {
     #[arg(
         short = 's',
         long,
-        value_parser = clap::builder::PossibleValuesParser::new(["full", "half","quadrant","sextant", "analog"])
+        value_parser = clap::builder::PossibleValuesParser::new(["full", "half","quadrant","sextant", "box", "analog"])
     )]
     size: Option<String>,
 }
@@ -100,6 +101,7 @@ impl App {
             &"full" => 8 + 1,
             &"half" => 8 + 1,
             &"sextant" => 3 + 2,
+            &"box" => 3 + 2,
             _ => 4 + 2,
         };
 
@@ -107,6 +109,7 @@ impl App {
             &"full" => 8 * 8 + 1,
             &"half" => 4 * 8 + 2,
             &"sextant" => 4 * 8 + 2,
+            &"box" => 3 * 8 + 2,
             _ => 4 * 8 + 2,
         };
 
@@ -174,6 +177,20 @@ impl App {
                     .build(),
                 block.inner(center_frame),
             ),
+            &"box" =>
+            // for (i, time_char) in "12:34:56".chars().enumerate() {
+            {
+                for (i, time_char) in (&self.time)
+                    .to_string()
+                    .replace(':', "-")
+                    .chars()
+                    .enumerate()
+                {
+                    let area_boxes =
+                        center_frame.offset(Offset::new((3 * i).try_into().unwrap(), 0));
+                    frame.render_widget(&BoxChar::new(time_char), block.inner(area_boxes))
+                }
+            }
             _ => frame.render_widget(
                 BigText::builder()
                     .style(Style::new())
@@ -332,6 +349,8 @@ impl App {
             self.args_size = "quadrant".to_string();
         } else if &self.args_size == "quadrant" {
             self.args_size = "sextant".to_string();
+        } else if &self.args_size == "sextant" {
+            self.args_size = "box".to_string();
         } else {
             self.is_canvas = true;
         }
