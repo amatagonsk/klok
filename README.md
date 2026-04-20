@@ -40,3 +40,4 @@ as far as I know, [microsoftcascadia-code](https://github.com/microsoft/cascadia
 
 [ratatui](https://github.com/ratatui-org/ratatui)  
 [tui-big-text](https://github.com/joshka/tui-big-text)  
+[tui-box-text](https://github.com/ratatui/tui-widgets)  
