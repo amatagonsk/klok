@@ -182,13 +182,25 @@ impl App {
             {
                 for (i, time_char) in (&self.time)
                     .to_string()
-                    .replace(':', "-")
+                    .replace(':', " ")
                     .chars()
                     .enumerate()
                 {
-                    let area_boxes =
-                        center_frame.offset(Offset::new((3 * i).try_into().unwrap(), 0));
-                    frame.render_widget(&BoxChar::new(time_char), block.inner(area_boxes))
+                    let area_boxes = match i {
+                        i if (i == 2 || i == 5) => {
+                            center_frame.offset(Offset::new(((3 * i) + 1).try_into().unwrap(), 1))
+                        }
+                        _ => center_frame.offset(Offset::new((3 * i).try_into().unwrap(), 0)),
+                    };
+
+                    match i {
+                        i if (i == 2 || i == 5) => frame
+                            .render_widget(ratatui::text::Span::from(":"), block.inner(area_boxes)),
+                        i if (i != 2 || i != 5) => {
+                            frame.render_widget(&BoxChar::new(time_char), block.inner(area_boxes))
+                        }
+                        _ => {}
+                    };
                 }
             }
             _ => frame.render_widget(
