@@ -221,22 +221,18 @@ impl App {
                 }
             }
             DisplayMode::Box => {
-                for (i, time_char) in self.time.replace(':', " ").chars().enumerate() {
-                    let area_boxes = match i {
-                        i if (i == 2 || i == 5) => {
-                            center_frame.offset(Offset::new(((3 * i) + 1).try_into().unwrap(), 1))
-                        }
-                        _ => center_frame.offset(Offset::new((3 * i).try_into().unwrap(), 0)),
-                    };
+                let time_chars: Vec<char> = self.time.replace(':', " ").chars().collect();
+                for (i, &time_char) in time_chars.iter().enumerate() {
+                    let is_colon_pos = i == 2 || i == 5;
+                    let offset_x = (3 * i as i32 + if is_colon_pos { 1 } else { 0 }) as i32;
+                    let offset_y = if is_colon_pos { 1 } else { 0 };
+                    let area = center_frame.offset(Offset::new(offset_x, offset_y));
 
-                    match i {
-                        i if (i == 2 || i == 5) => frame
-                            .render_widget(ratatui::text::Span::from(":"), block.inner(area_boxes)),
-                        i if (i != 2 || i != 5) => {
-                            frame.render_widget(&BoxChar::new(time_char), block.inner(area_boxes))
-                        }
-                        _ => {}
-                    };
+                    if is_colon_pos {
+                        frame.render_widget(ratatui::text::Span::from(":"), block.inner(area));
+                    } else {
+                        frame.render_widget(&BoxChar::new(time_char), block.inner(area));
+                    }
                 }
             }
             DisplayMode::Analog => unreachable!(),
