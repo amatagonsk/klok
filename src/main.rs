@@ -16,36 +16,100 @@ mod errors;
 mod tui;
 use clap::Parser;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, clap::ValueEnum)]
+enum DisplayMode {
+    Full,
+    Half,
+    Quadrant,
+    Sextant,
+    Box,
+    Analog,
+}
+
+impl DisplayMode {
+    fn next(&self) -> Self {
+        match self {
+            DisplayMode::Full => DisplayMode::Half,
+            DisplayMode::Half => DisplayMode::Quadrant,
+            DisplayMode::Quadrant => DisplayMode::Sextant,
+            DisplayMode::Sextant => DisplayMode::Box,
+            DisplayMode::Box => DisplayMode::Analog,
+            DisplayMode::Analog => DisplayMode::Full,
+        }
+    }
+
+    fn is_analog(&self) -> bool {
+        matches!(self, DisplayMode::Analog)
+    }
+
+    fn pixel_size(&self) -> Option<PixelSize> {
+        match self {
+            DisplayMode::Full => Some(PixelSize::Full),
+            DisplayMode::Half => Some(PixelSize::HalfWidth),
+            DisplayMode::Quadrant => Some(PixelSize::Quadrant),
+            DisplayMode::Sextant => Some(PixelSize::Sextant),
+            DisplayMode::Box | DisplayMode::Analog => None,
+        }
+    }
+
+    fn clock_height(&self) -> u16 {
+        match self {
+            DisplayMode::Full | DisplayMode::Half => 9,
+            DisplayMode::Sextant | DisplayMode::Box => 5,
+            DisplayMode::Analog | DisplayMode::Quadrant => 6,
+        }
+    }
+
+    fn clock_width(&self) -> u16 {
+        match self {
+            DisplayMode::Full => 65,
+            DisplayMode::Half | DisplayMode::Sextant | DisplayMode::Quadrant => 34,
+            DisplayMode::Box => 26,
+            DisplayMode::Analog => 34,
+        }
+    }
+}
+
+impl std::str::FromStr for DisplayMode {
+    type Err = String;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "full" => Ok(DisplayMode::Full),
+            "half" => Ok(DisplayMode::Half),
+            "quadrant" => Ok(DisplayMode::Quadrant),
+            "sextant" => Ok(DisplayMode::Sextant),
+            "box" => Ok(DisplayMode::Box),
+            "analog" => Ok(DisplayMode::Analog),
+            _ => Err(format!("Invalid size: {}", s)),
+        }
+    }
+}
+
+impl Default for DisplayMode {
+    fn default() -> Self {
+        DisplayMode::Quadrant
+    }
+}
+
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
 struct Args {
-    #[arg(
-        short = 's',
-        long,
-        value_parser = clap::builder::PossibleValuesParser::new(["full", "half","quadrant","sextant", "box", "analog"])
-    )]
-    size: Option<String>,
+    #[arg(short = 's', long, value_enum)]
+    size: Option<DisplayMode>,
 }
 
 fn main() -> Result<()> {
-    let arg_size = Args::parse().size.unwrap_or_else(|| "quadrant".to_string());
-
-    let (arg_size, arg_is_analog) = if arg_size == "analog" {
-        ("quadrant".to_string(), true)
-    } else {
-        (arg_size, false)
-    };
+    let display_mode = Args::parse().size.unwrap_or(DisplayMode::Quadrant);
     errors::install_hooks()?;
     let mut terminal = tui::init()?;
     execute!(stdout(), EnableMouseCapture)?;
-    let mut arg_app = App {
-        args_size: arg_size,
+    let mut app = App {
+        display_mode,
         marker: Marker::Braille,
-        is_canvas: arg_is_analog,
         exit: false,
         ..Default::default()
     };
-    arg_app.run(&mut terminal)?;
+    app.run(&mut terminal)?;
     tui::restore()?;
     Ok(())
 }
@@ -56,12 +120,11 @@ pub struct App {
     weekday: String,
     time: String,
     exit: bool,
-    args_size: String,
+    display_mode: DisplayMode,
     center_origin: Point,
     hour_point: Point,
     min_point: Point,
     sec_point: Point,
-    is_canvas: bool,
     marker: Marker,
     hour_scale: f64,
     min_scale: f64,
@@ -87,7 +150,7 @@ impl App {
         while !self.exit {
             self.handle_events().wrap_err("handle events failed")?;
             self.tictac();
-            if !self.is_canvas {
+            if !self.display_mode.is_analog() {
                 terminal.draw(|frame| self.render_digital(frame).expect("failed to render"))?;
             } else {
                 terminal.draw(|frame| self.render_analog(frame).expect("failed to render"))?;
@@ -97,21 +160,8 @@ impl App {
     }
 
     fn centered_rect(&self, r: Rect) -> Rect {
-        let clock_height: u16 = match &self.args_size.as_str() {
-            &"full" => 8 + 1,
-            &"half" => 8 + 1,
-            &"sextant" => 3 + 2,
-            &"box" => 3 + 2,
-            _ => 4 + 2,
-        };
-
-        let clock_width: u16 = match &self.args_size.as_str() {
-            &"full" => 8 * 8 + 1,
-            &"half" => 4 * 8 + 2,
-            &"sextant" => 4 * 8 + 2,
-            &"box" => 3 * 8 + 2,
-            _ => 4 * 8 + 2,
-        };
+        let clock_height = self.display_mode.clock_height();
+        let clock_width = self.display_mode.clock_width();
 
         let popup_layout = Layout::default()
             .direction(Direction::Vertical)
@@ -132,13 +182,22 @@ impl App {
             .split(popup_layout[1])[1]
     }
 
+    fn build_big_text(&self) -> Option<impl Widget + '_> {
+        self.display_mode.pixel_size().map(|pixel_size| {
+            BigText::builder()
+                .style(Style::new())
+                .pixel_size(pixel_size)
+                .lines(vec![self.time.as_str().into()])
+                .build()
+        })
+    }
+
     fn render_digital(&mut self, frame: &mut Frame) -> Result<()> {
         let block = Block::new()
-            // .borders(Borders::ALL)
             .title(format!(" {} {} ", &self.year_month_day, &self.weekday))
             .title_bottom(ratatui::text::Line::from(" exit: <q> or <Esc> ").centered());
 
-        let center_frame = App::centered_rect(&self, frame.area());
+        let center_frame = self.centered_rect(frame.area());
         (
             self.frame_x,
             self.frame_y,
@@ -152,40 +211,17 @@ impl App {
         );
         frame.render_widget(&block, center_frame);
 
-        match &self.args_size.as_str() {
-            &"full" => frame.render_widget(
-                BigText::builder()
-                    .style(Style::new())
-                    .pixel_size(PixelSize::Full)
-                    .lines(vec![(&self.time).to_string().into()])
-                    .build(),
-                block.inner(center_frame),
-            ),
-            &"half" => frame.render_widget(
-                BigText::builder()
-                    .style(Style::new())
-                    .pixel_size(PixelSize::HalfWidth)
-                    .lines(vec![(&self.time).to_string().into()])
-                    .build(),
-                block.inner(center_frame),
-            ),
-            &"sextant" => frame.render_widget(
-                BigText::builder()
-                    .style(Style::new())
-                    .pixel_size(PixelSize::Sextant)
-                    .lines(vec![(&self.time).to_string().into()])
-                    .build(),
-                block.inner(center_frame),
-            ),
-            &"box" =>
-            // for (i, time_char) in "12:34:56".chars().enumerate() {
-            {
-                for (i, time_char) in (&self.time)
-                    .to_string()
-                    .replace(':', " ")
-                    .chars()
-                    .enumerate()
-                {
+        match self.display_mode {
+            DisplayMode::Full
+            | DisplayMode::Half
+            | DisplayMode::Quadrant
+            | DisplayMode::Sextant => {
+                if let Some(big_text) = self.build_big_text() {
+                    frame.render_widget(big_text, block.inner(center_frame));
+                }
+            }
+            DisplayMode::Box => {
+                for (i, time_char) in self.time.replace(':', " ").chars().enumerate() {
                     let area_boxes = match i {
                         i if (i == 2 || i == 5) => {
                             center_frame.offset(Offset::new(((3 * i) + 1).try_into().unwrap(), 1))
@@ -203,14 +239,7 @@ impl App {
                     };
                 }
             }
-            _ => frame.render_widget(
-                BigText::builder()
-                    .style(Style::new())
-                    .pixel_size(PixelSize::Quadrant)
-                    .lines(vec![(&self.time).to_string().into()])
-                    .build(),
-                block.inner(center_frame),
-            ),
+            DisplayMode::Analog => unreachable!(),
         }
         Ok(())
     }
@@ -318,7 +347,6 @@ impl App {
             match key_event.code {
                 KeyCode::Char('q') | KeyCode::Esc => self.exit(),
                 KeyCode::Tab => self.change_size(),
-                KeyCode::Char('a') => self.is_canvas = false,
                 _ => {}
             }
         }
@@ -334,13 +362,13 @@ impl App {
         };
         if mouse_event.kind == MouseEventKind::Down(MouseButton::Left) {
             // digital
-            if !self.is_canvas
+            if !self.display_mode.is_analog()
                 && self.frame_x < mouse_event.column
                 && mouse_event.column < self.frame_x + self.frame_width
                 && self.frame_y < mouse_event.row
                 && mouse_event.row < self.frame_y + self.frame_height
             // analog
-            || self.is_canvas
+            || self.display_mode.is_analog()
                 && canvas_x < mouse_event.column
                 && mouse_event.column < canvas_x + self.frame_shorter
                 && (canvas_y * 10 / 21) < mouse_event.row
@@ -352,20 +380,7 @@ impl App {
     }
 
     fn change_size(&mut self) {
-        if self.is_canvas == true {
-            self.is_canvas = false;
-            self.args_size = "full".to_string();
-        } else if &self.args_size == "full" {
-            self.args_size = "half".to_string();
-        } else if &self.args_size == "half" {
-            self.args_size = "quadrant".to_string();
-        } else if &self.args_size == "quadrant" {
-            self.args_size = "sextant".to_string();
-        } else if &self.args_size == "sextant" {
-            self.args_size = "box".to_string();
-        } else {
-            self.is_canvas = true;
-        }
+        self.display_mode = self.display_mode.next();
     }
 
     fn exit(&mut self) {
