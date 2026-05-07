@@ -23,7 +23,7 @@ or download from [release](https://github.com/amatagonsk/klok/releases)
 Usage: klok [OPTIONS]
 
 Options:
-  -s, --size <SIZE>  [possible values: full, half, quadrant, sextant, analog]
+  -s, --size <SIZE>  [possible values: full, half, quadrant, sextant, box, analog]
   -h, --help         Print help
   -V, --version      Print version
 ```
