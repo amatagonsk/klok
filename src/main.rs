@@ -54,18 +54,18 @@ impl DisplayMode {
 
     fn clock_height(&self) -> u16 {
         match self {
-            DisplayMode::Full | DisplayMode::Half => 9,
-            DisplayMode::Sextant | DisplayMode::Box => 5,
-            DisplayMode::Analog | DisplayMode::Quadrant => 6,
+            DisplayMode::Full | DisplayMode::Half => 8 + 1, // 8 lines of text + 1 line margin
+            DisplayMode::Sextant | DisplayMode::Box => 3 + 2, // 3 lines + 2 lines margin
+            DisplayMode::Analog | DisplayMode::Quadrant => 4 + 2, // 4 lines + 2 lines margin
         }
     }
 
     fn clock_width(&self) -> u16 {
         match self {
-            DisplayMode::Full => 65,
-            DisplayMode::Half | DisplayMode::Sextant | DisplayMode::Quadrant => 34,
-            DisplayMode::Box => 26,
-            DisplayMode::Analog => 34,
+            DisplayMode::Full => 8 * 8 + 1, // 8 chars * 8 dots + 1
+            DisplayMode::Half | DisplayMode::Sextant | DisplayMode::Quadrant => 4 * 8 + 2, // 4 chars * 8 dots + 2
+            DisplayMode::Box => 3 * 8 + 2,    // 3 chars * 8 dots + 2
+            DisplayMode::Analog => 4 * 8 + 2, // same as quadrant
         }
     }
 }
@@ -280,7 +280,7 @@ impl App {
         self.mouse.frame_longer = longer_side as u16;
         self.mouse.frame_is_vertical_short = if right > top { true } else { false };
         let radius = shorter_side / 2.;
-        self.analog.clock_radius = radius; // 半径を保存
+        self.analog.clock_radius = radius;
         self.analog.hour_scale = radius * 0.6;
         self.analog.min_scale = radius * 0.9;
         self.analog.sec_scale = radius * 0.8;
