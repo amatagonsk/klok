@@ -141,6 +141,7 @@ struct MouseState {
     frame_is_vertical_short: bool,
     frame_shorter: u16,
     frame_longer: u16,
+    analog_area: Option<Rect>,
 }
 
 #[derive(Debug, Default)]
@@ -259,7 +260,9 @@ impl App {
     }
 
     fn render_analog(&mut self, frame: &mut Frame) -> Result<()> {
-        frame.render_widget(self.analog_clock(frame.area()), frame.area());
+        let area = frame.area();
+        self.mouse.analog_area = Some(area);
+        frame.render_widget(self.analog_clock(area), area);
         Ok(())
     }
 
@@ -369,27 +372,22 @@ impl App {
     }
 
     fn handle_mouse_event(&mut self, mouse_event: MouseEvent) {
-        let mut canvas_x: u16 = 0;
-        let mut canvas_y: u16 = 0;
-        if self.mouse.frame_is_vertical_short {
-            canvas_x = (self.mouse.frame_longer - self.mouse.frame_shorter) / 2
-        } else {
-            canvas_y = (self.mouse.frame_longer - self.mouse.frame_shorter) / 2
-        };
         if mouse_event.kind == MouseEventKind::Down(MouseButton::Left) {
-            // digital
-            if !self.display_mode.is_analog()
-                && self.mouse.frame_x < mouse_event.column
-                && mouse_event.column < self.mouse.frame_x + self.mouse.frame_width
-                && self.mouse.frame_y < mouse_event.row
-                && mouse_event.row < self.mouse.frame_y + self.mouse.frame_height
-            // analog
-            || self.display_mode.is_analog()
-                && canvas_x < mouse_event.column
-                && mouse_event.column < canvas_x + self.mouse.frame_shorter
-                && (canvas_y * 10 / 21) < mouse_event.row
-                && mouse_event.row < ((canvas_y + self.mouse.frame_shorter) * 10 / 21)
-            {
+            let clicked = if !self.display_mode.is_analog() {
+                // digital clock: check if click is within digital clock area
+                self.mouse.frame_x <= mouse_event.column
+                    && mouse_event.column < self.mouse.frame_x + self.mouse.frame_width
+                    && self.mouse.frame_y <= mouse_event.row
+                    && mouse_event.row < self.mouse.frame_y + self.mouse.frame_height
+            } else {
+                // analog clock: use recorded area to check (no coordinate conversion needed)
+                self.mouse
+                    .analog_area
+                    .map(|area| area.contains(Position::new(mouse_event.column, mouse_event.row)))
+                    .unwrap_or(false)
+            };
+
+            if clicked {
                 self.change_size();
             }
         }
