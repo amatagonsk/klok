@@ -115,21 +115,25 @@ fn main() -> Result<()> {
 }
 
 #[derive(Debug, Default)]
-pub struct App {
+struct ClockState {
     year_month_day: String,
     weekday: String,
     time: String,
-    exit: bool,
-    display_mode: DisplayMode,
+}
+
+#[derive(Debug, Default)]
+struct AnalogState {
     center_origin: Point,
     hour_point: Point,
     min_point: Point,
     sec_point: Point,
-    marker: Marker,
     hour_scale: f64,
     min_scale: f64,
     sec_scale: f64,
-    // frame_.* for mouse event
+}
+
+#[derive(Debug, Default)]
+struct MouseState {
     frame_x: u16,
     frame_width: u16,
     frame_y: u16,
@@ -138,7 +142,18 @@ pub struct App {
     frame_shorter: u16,
     frame_longer: u16,
 }
+
 #[derive(Debug, Default)]
+pub struct App {
+    clock: ClockState,
+    analog: AnalogState,
+    mouse: MouseState,
+    exit: bool,
+    display_mode: DisplayMode,
+    marker: Marker,
+}
+
+#[derive(Debug, Default, Clone, Copy)]
 struct Point {
     x: f64,
     y: f64,
@@ -187,22 +202,25 @@ impl App {
             BigText::builder()
                 .style(Style::new())
                 .pixel_size(pixel_size)
-                .lines(vec![self.time.as_str().into()])
+                .lines(vec![self.clock.time.as_str().into()])
                 .build()
         })
     }
 
     fn render_digital(&mut self, frame: &mut Frame) -> Result<()> {
         let block = Block::new()
-            .title(format!(" {} {} ", &self.year_month_day, &self.weekday))
+            .title(format!(
+                " {} {} ",
+                &self.clock.year_month_day, &self.clock.weekday
+            ))
             .title_bottom(ratatui::text::Line::from(" exit: <q> or <Esc> ").centered());
 
         let center_frame = self.centered_rect(frame.area());
         (
-            self.frame_x,
-            self.frame_y,
-            self.frame_width,
-            self.frame_height,
+            self.mouse.frame_x,
+            self.mouse.frame_y,
+            self.mouse.frame_width,
+            self.mouse.frame_height,
         ) = (
             center_frame.x,
             center_frame.y,
@@ -221,7 +239,7 @@ impl App {
                 }
             }
             DisplayMode::Box => {
-                let time_chars: Vec<char> = self.time.replace(':', " ").chars().collect();
+                let time_chars: Vec<char> = self.clock.time.replace(':', " ").chars().collect();
                 for (i, &time_char) in time_chars.iter().enumerate() {
                     let is_colon_pos = i == 2 || i == 5;
                     let offset_x = (3 * i as i32 + if is_colon_pos { 1 } else { 0 }) as i32;
@@ -250,43 +268,45 @@ impl App {
         let right = f64::from(area.width);
         let bottom = 0.0;
         let top = f64::from(area.height).mul_add(2.0, -4.0);
-        self.center_origin.x = right / 2 as f64;
-        self.center_origin.y = top / 2 as f64;
+        self.analog.center_origin.x = right / 2 as f64;
+        self.analog.center_origin.y = top / 2 as f64;
         let shorter_side = if right > top { top } else { right };
         let longer_side = if right > top { right } else { top };
-        self.frame_shorter = shorter_side as u16;
-        self.frame_longer = longer_side as u16;
-        self.frame_is_vertical_short = if right > top { true } else { false };
-        self.hour_scale = shorter_side / 2. * 0.6;
-        self.min_scale = shorter_side / 2. * 0.9;
-        self.sec_scale = shorter_side / 2. * 0.8;
+        self.mouse.frame_shorter = shorter_side as u16;
+        self.mouse.frame_longer = longer_side as u16;
+        self.mouse.frame_is_vertical_short = if right > top { true } else { false };
+        self.analog.hour_scale = shorter_side / 2. * 0.6;
+        self.analog.min_scale = shorter_side / 2. * 0.9;
+        self.analog.sec_scale = shorter_side / 2. * 0.8;
+        let clock = &self.clock;
+        let analog = &self.analog;
         Canvas::default()
             .block(
                 Block::new()
-                    .title(format!(" {} {} ", &self.year_month_day, &self.weekday))
+                    .title(format!(" {} {} ", &clock.year_month_day, &clock.weekday))
                     .title_alignment(Alignment::Center),
             )
             .marker(self.marker)
-            .paint(|ctx| {
+            .paint(move |ctx| {
                 ctx.draw(&ratatui::widgets::canvas::Line {
-                    x1: self.center_origin.x,
-                    y1: self.center_origin.y,
-                    x2: self.sec_point.x,
-                    y2: self.sec_point.y,
+                    x1: analog.center_origin.x,
+                    y1: analog.center_origin.y,
+                    x2: analog.sec_point.x,
+                    y2: analog.sec_point.y,
                     color: Color::DarkGray,
                 });
                 ctx.draw(&ratatui::widgets::canvas::Line {
-                    x1: self.center_origin.x,
-                    y1: self.center_origin.y,
-                    x2: self.min_point.x,
-                    y2: self.min_point.y,
+                    x1: analog.center_origin.x,
+                    y1: analog.center_origin.y,
+                    x2: analog.min_point.x,
+                    y2: analog.min_point.y,
                     ..Default::default()
                 });
                 ctx.draw(&ratatui::widgets::canvas::Line {
-                    x1: self.center_origin.x,
-                    y1: self.center_origin.y,
-                    x2: self.hour_point.x,
-                    y2: self.hour_point.y,
+                    x1: analog.center_origin.x,
+                    y1: analog.center_origin.y,
+                    x2: analog.hour_point.x,
+                    y2: analog.hour_point.y,
                     color: Color::Red,
                 });
             })
@@ -296,25 +316,25 @@ impl App {
 
     fn tictac(&mut self) {
         let local_date_time: DateTime<Local> = Local::now();
-        self.time = format!("{}", local_date_time.format("%H:%M:%S"));
-        self.year_month_day = format!("{}", local_date_time.format("%Y-%m-%d"));
-        self.weekday = format!("{}", local_date_time.weekday());
+        self.clock.time = format!("{}", local_date_time.format("%H:%M:%S"));
+        self.clock.year_month_day = format!("{}", local_date_time.format("%Y-%m-%d"));
+        self.clock.weekday = format!("{}", local_date_time.weekday());
 
-        (self.hour_point.x, self.hour_point.y) = Self::clock_point(
+        (self.analog.hour_point.x, self.analog.hour_point.y) = Self::clock_point(
             ((local_date_time.hour12().1 * 30) as f32 + 0.5 * (local_date_time.minute() as f32))
                 as i32,
-            &self.hour_scale,
-            &self.center_origin,
+            &self.analog.hour_scale,
+            &self.analog.center_origin,
         );
-        (self.min_point.x, self.min_point.y) = Self::clock_point(
+        (self.analog.min_point.x, self.analog.min_point.y) = Self::clock_point(
             (local_date_time.minute() as i32) * 6,
-            &self.min_scale,
-            &self.center_origin,
+            &self.analog.min_scale,
+            &self.analog.center_origin,
         );
-        (self.sec_point.x, self.sec_point.y) = Self::clock_point(
+        (self.analog.sec_point.x, self.analog.sec_point.y) = Self::clock_point(
             (local_date_time.second() as i32) * 6,
-            &self.sec_scale,
-            &self.center_origin,
+            &self.analog.sec_scale,
+            &self.analog.center_origin,
         );
     }
 
@@ -351,24 +371,24 @@ impl App {
     fn handle_mouse_event(&mut self, mouse_event: MouseEvent) {
         let mut canvas_x: u16 = 0;
         let mut canvas_y: u16 = 0;
-        if self.frame_is_vertical_short {
-            canvas_x = (self.frame_longer - self.frame_shorter) / 2
+        if self.mouse.frame_is_vertical_short {
+            canvas_x = (self.mouse.frame_longer - self.mouse.frame_shorter) / 2
         } else {
-            canvas_y = (self.frame_longer - self.frame_shorter) / 2
+            canvas_y = (self.mouse.frame_longer - self.mouse.frame_shorter) / 2
         };
         if mouse_event.kind == MouseEventKind::Down(MouseButton::Left) {
             // digital
             if !self.display_mode.is_analog()
-                && self.frame_x < mouse_event.column
-                && mouse_event.column < self.frame_x + self.frame_width
-                && self.frame_y < mouse_event.row
-                && mouse_event.row < self.frame_y + self.frame_height
+                && self.mouse.frame_x < mouse_event.column
+                && mouse_event.column < self.mouse.frame_x + self.mouse.frame_width
+                && self.mouse.frame_y < mouse_event.row
+                && mouse_event.row < self.mouse.frame_y + self.mouse.frame_height
             // analog
             || self.display_mode.is_analog()
                 && canvas_x < mouse_event.column
-                && mouse_event.column < canvas_x + self.frame_shorter
+                && mouse_event.column < canvas_x + self.mouse.frame_shorter
                 && (canvas_y * 10 / 21) < mouse_event.row
-                && mouse_event.row < ((canvas_y + self.frame_shorter) * 10 / 21)
+                && mouse_event.row < ((canvas_y + self.mouse.frame_shorter) * 10 / 21)
             {
                 self.change_size();
             }
