@@ -365,6 +365,13 @@ impl App {
         if key_event.kind == KeyEventKind::Press {
             match key_event.code {
                 KeyCode::Char('q') | KeyCode::Esc => self.exit(),
+                KeyCode::Char('c')
+                    if key_event
+                        .modifiers
+                        .contains(crossterm::event::KeyModifiers::CONTROL) =>
+                {
+                    self.exit()
+                }
                 KeyCode::Tab => self.change_size(),
                 _ => {}
             }
