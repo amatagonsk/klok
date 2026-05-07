@@ -314,7 +314,7 @@ impl App {
                             y1: tick_start_y,
                             x2: tick_end_x,
                             y2: tick_end_y,
-                            color: Color::White,
+                            ..Default::default()
                         });
                     }
                 }
@@ -328,13 +328,13 @@ impl App {
                     color: Color::DarkGray,
                 });
 
-                // Draw min hand (medium, white)
+                // Draw min hand (medium, default color)
                 ctx.draw(&ratatui::widgets::canvas::Line {
                     x1: center.x,
                     y1: center.y,
                     x2: analog.min_point.x,
                     y2: analog.min_point.y,
-                    color: Color::White,
+                    ..Default::default()
                 });
 
                 // Draw hour hand (thick, red)
