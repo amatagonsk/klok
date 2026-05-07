@@ -130,6 +130,7 @@ struct AnalogState {
     hour_scale: f64,
     min_scale: f64,
     sec_scale: f64,
+    clock_radius: f64,
 }
 
 #[derive(Debug, Default)]
@@ -278,13 +279,14 @@ impl App {
         self.mouse.frame_shorter = shorter_side as u16;
         self.mouse.frame_longer = longer_side as u16;
         self.mouse.frame_is_vertical_short = if right > top { true } else { false };
-        self.analog.hour_scale = shorter_side / 2. * 0.6;
-        self.analog.min_scale = shorter_side / 2. * 0.9;
-        self.analog.sec_scale = shorter_side / 2. * 0.8;
+        let radius = shorter_side / 2.;
+        self.analog.clock_radius = radius; // 半径を保存
+        self.analog.hour_scale = radius * 0.6;
+        self.analog.min_scale = radius * 0.9;
+        self.analog.sec_scale = radius * 0.8;
         let clock = &self.clock;
         let analog = &self.analog;
         let center = analog.center_origin;
-        let radius = shorter_side / 2.;
         Canvas::default()
             .block(
                 Block::new()
@@ -418,11 +420,14 @@ impl App {
                     && self.mouse.frame_y <= mouse_event.row
                     && mouse_event.row < self.mouse.frame_y + self.mouse.frame_height
             } else {
-                // analog clock: use recorded area to check (no coordinate conversion needed)
-                self.mouse
-                    .analog_area
-                    .map(|area| area.contains(Position::new(mouse_event.column, mouse_event.row)))
-                    .unwrap_or(false)
+                // analog clock: check if click is within the clock circle
+                let center = self.analog.center_origin;
+                let radius = self.analog.clock_radius;
+                // convert mouse row to canvas coordinate (Braille marker doubles vertical resolution)
+                let mouse_x = mouse_event.column as f64;
+                let mouse_y = mouse_event.row as f64 * 2.0;
+                let distance_sq = (mouse_x - center.x).powi(2) + (mouse_y - center.y).powi(2);
+                distance_sq <= radius.powi(2) // within circle
             };
 
             if clicked {
