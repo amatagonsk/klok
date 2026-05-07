@@ -283,6 +283,8 @@ impl App {
         self.analog.sec_scale = shorter_side / 2. * 0.8;
         let clock = &self.clock;
         let analog = &self.analog;
+        let center = analog.center_origin;
+        let radius = shorter_side / 2.;
         Canvas::default()
             .block(
                 Block::new()
@@ -291,23 +293,52 @@ impl App {
             )
             .marker(self.marker)
             .paint(move |ctx| {
+                // Draw hour markers (1-12) only when clock is large enough
+                if radius > 30.0 {
+                    for hour in 1..=12 {
+                        let angle = (90 - (hour * 30)) as f64 * PI / 180.0;
+                        let marker_radius = radius * 0.85;
+                        let x = angle.cos() * marker_radius + center.x;
+                        let y = angle.sin() * marker_radius + center.y;
+                        // Draw hour number
+                        ctx.print(x, y, ratatui::text::Span::from(format!("{}", hour)));
+                        // Draw small tick marks
+                        let tick_start_x = angle.cos() * (radius * 0.8) + center.x;
+                        let tick_start_y = angle.sin() * (radius * 0.8) + center.y;
+                        let tick_end_x = angle.cos() * (radius * 0.9) + center.x;
+                        let tick_end_y = angle.sin() * (radius * 0.9) + center.y;
+                        ctx.draw(&ratatui::widgets::canvas::Line {
+                            x1: tick_start_x,
+                            y1: tick_start_y,
+                            x2: tick_end_x,
+                            y2: tick_end_y,
+                            color: Color::White,
+                        });
+                    }
+                }
+
+                // Draw sec hand (thin, gray)
                 ctx.draw(&ratatui::widgets::canvas::Line {
-                    x1: analog.center_origin.x,
-                    y1: analog.center_origin.y,
+                    x1: center.x,
+                    y1: center.y,
                     x2: analog.sec_point.x,
                     y2: analog.sec_point.y,
                     color: Color::DarkGray,
                 });
+
+                // Draw min hand (medium, white)
                 ctx.draw(&ratatui::widgets::canvas::Line {
-                    x1: analog.center_origin.x,
-                    y1: analog.center_origin.y,
+                    x1: center.x,
+                    y1: center.y,
                     x2: analog.min_point.x,
                     y2: analog.min_point.y,
-                    ..Default::default()
+                    color: Color::White,
                 });
+
+                // Draw hour hand (thick, red)
                 ctx.draw(&ratatui::widgets::canvas::Line {
-                    x1: analog.center_origin.x,
-                    y1: analog.center_origin.y,
+                    x1: center.x,
+                    y1: center.y,
                     x2: analog.hour_point.x,
                     y2: analog.hour_point.y,
                     color: Color::Red,
